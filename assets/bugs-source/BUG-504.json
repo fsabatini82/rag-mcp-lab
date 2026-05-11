@@ -1,0 +1,22 @@
+{
+  "id": "BUG-504",
+  "title": "Query GET /tasks degrada >2s su tenant grandi per mancanza indice composito",
+  "severity": "high",
+  "status": "resolved",
+  "epic": "EPIC-DB",
+  "area_path": "ProjectTracker\\Database\\Performance",
+  "created": "2025-10-04",
+  "resolved": "2025-10-08",
+  "resolved_by": "andrea.neri@example.com",
+  "symptom": "Su tenant con tabella tasks > 100k righe, GET /api/v1/tasks?project_id=X&status=open risponde in 2.3-4.1 secondi. P99 latency dell'endpoint sopra il SLO (300ms). EXPLAIN ANALYZE mostra Sequential Scan invece di Index Scan.",
+  "root_cause": "L'unico indice presente era su tasks(id) e tasks(project_id) singolarmente. La query WHERE project_id = ? AND status = ? non poteva usare un indice composito, e il planner sceglieva Seq Scan quando la cardinalità di project_id era bassa rispetto alla tabella. L'indice singolo su project_id era ignorato perché la combinata con status produceva troppe righe da filtrare in memoria.",
+  "fix_summary": "1) Creata migrazione Alembic con CREATE INDEX CONCURRENTLY idx_tasks_project_status ON tasks (project_id, status) WHERE archived_at IS NULL (indice parziale per escludere archiviati); 2) CONCURRENTLY per evitare lock prolungato in produzione; 3) Documentato il motivo nel commento della migrazione referenziando questo bug; 4) Tempo query post-fix: 35-50ms (verificato con EXPLAIN ANALYZE su prod-staging).",
+  "files_touched": [
+    "src/backend/db/migrations/versions/20251008_add_tasks_project_status_idx.py",
+    "docs/runbooks/performance_baseline.md"
+  ],
+  "related_pr": "https://dev.azure.com/example/_git/project-tracker/pullrequest/389",
+  "related_spec": "US-302",
+  "related_adr": "ADR-005",
+  "pattern_tags": ["missing-index", "composite-index", "partial-index", "seq-scan", "slo-breach", "query-performance"]
+}

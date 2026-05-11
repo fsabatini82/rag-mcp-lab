@@ -1,0 +1,24 @@
+{
+  "id": "BUG-503",
+  "title": "Drag-and-drop kanban perde lo stato se la PATCH /status fallisce silenziosamente",
+  "severity": "high",
+  "status": "resolved",
+  "epic": "EPIC-FE",
+  "area_path": "ProjectTracker\\Frontend\\Kanban",
+  "created": "2025-09-12",
+  "resolved": "2025-09-15",
+  "resolved_by": "giulia.verdi@example.com",
+  "symptom": "Trascinando una task fra colonne del kanban, l'UI mostra subito il task nella colonna destinazione (UI ottimistica). Dopo 2-5 secondi, intermittentemente, il task torna nella colonna di origine senza alcun messaggio all'utente. Comportamento riproducibile su rete instabile o quando il backend risponde 5xx.",
+  "root_cause": "Il hook useTaskMutation chiamava PATCH /api/v1/tasks/{id}/status in modalità fire-and-forget: nessun .onError, nessun await sulla response, nessuna gestione errori. In caso di fallimento HTTP, TanStack Query faceva refetch della lista e il server restituiva lo stato precedente (la PATCH era fallita lato server), causando il 'revert' apparente. L'utente non aveva feedback né capacità di retry.",
+  "fix_summary": "1) Aggiunto onError handler al hook useTaskMutation che esegue revert esplicito dell'UI alla colonna di origine; 2) Toast errore con messaggio chiaro e bottone 'Retry' che ripropone la mutate; 3) Aggiornato ADR-004 con il principio 'nessuna mutate fire-and-forget'; 4) Aggiunto test E2E che simula fallimento server e verifica revert + toast.",
+  "files_touched": [
+    "src/frontend/hooks/useTaskMutation.ts",
+    "src/frontend/components/KanbanBoard.tsx",
+    "src/frontend/components/Toast.tsx",
+    "tests/e2e/kanban_drag_drop.spec.ts"
+  ],
+  "related_pr": "https://dev.azure.com/example/_git/project-tracker/pullrequest/312",
+  "related_spec": "US-203",
+  "related_adr": "ADR-004",
+  "pattern_tags": ["optimistic-ui-revert", "silent-failure", "missing-error-handler", "fire-and-forget", "user-feedback-missing"]
+}

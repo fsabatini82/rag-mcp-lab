@@ -1,0 +1,22 @@
+{
+  "id": "BUG-501",
+  "title": "NullReferenceException creando task senza description",
+  "severity": "high",
+  "status": "resolved",
+  "epic": "EPIC-BE",
+  "area_path": "ProjectTracker\\Backend\\Tasks",
+  "created": "2025-07-22",
+  "resolved": "2025-07-24",
+  "resolved_by": "marco.rossi@example.com",
+  "symptom": "POST /api/v1/tasks senza il campo 'description' restituisce 500. Lo stacktrace mostra NullReferenceException nel serializer JSON quando prova ad accedere a .Trim() sulla description.",
+  "root_cause": "Il modello Pydantic accettava description come Optional[str]=None, ma il TaskSerializer assumeva sempre stringa non-null e chiamava .strip() direttamente. La validazione non rifiutava l'input perché description era opzionale a livello di schema.",
+  "fix_summary": "1) Default value per description impostato a '' (stringa vuota) a livello di Pydantic model; 2) Tipo nel dominio rimasto Optional[str] per chiarezza intent; 3) Aggiunto test di regressione per POST con body senza description.",
+  "files_touched": [
+    "src/backend/schemas/task_schema.py",
+    "src/backend/services/task_serializer.py",
+    "tests/backend/test_create_task.py"
+  ],
+  "related_pr": "https://dev.azure.com/example/_git/project-tracker/pullrequest/231",
+  "related_spec": "US-101",
+  "pattern_tags": ["null-handling", "optional-field", "serializer-mismatch", "missing-default"]
+}

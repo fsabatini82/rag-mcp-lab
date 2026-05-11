@@ -1,0 +1,23 @@
+{
+  "id": "BUG-505",
+  "title": "Webhook outbound entra in retry storm se consumer risponde 500",
+  "severity": "medium",
+  "status": "resolved",
+  "epic": "EPIC-BE",
+  "area_path": "ProjectTracker\\Backend\\Webhooks",
+  "created": "2025-10-19",
+  "resolved": "2025-10-22",
+  "resolved_by": "marco.rossi@example.com",
+  "symptom": "Quando un consumer webhook risponde 500, il nostro service ritrasmette ogni 2 secondi in loop infinito. In 1 ora di outage del consumer accumuliamo ~1800 retry per ogni cambio di stato task, saturando il pool di worker.",
+  "root_cause": "WebhookDispatcher aveva retry con backoff costante (2s) e max_attempts=infinito. Nessuna circuit-breaker logic, nessun jitter. In caso di outage del consumer le retry si accumulavano fino a esaurire il pool.",
+  "fix_summary": "1) Backoff esponenziale (2s, 4s, 8s, 16s, 32s, max 60s) con jitter random ±20%; 2) max_attempts=6 (default) configurabile; 3) Dopo max_attempts il webhook va in dead-letter queue con metadata di failure; 4) Circuit breaker per consumer URL: dopo 10 fallimenti consecutivi sospende le call per 5 minuti.",
+  "files_touched": [
+    "src/backend/services/webhook_dispatcher.py",
+    "src/backend/common/retry.py",
+    "src/backend/common/circuit_breaker.py",
+    "tests/backend/test_webhook_retry.py"
+  ],
+  "related_pr": "https://dev.azure.com/example/_git/project-tracker/pullrequest/421",
+  "related_spec": "US-105",
+  "pattern_tags": ["retry-storm", "exponential-backoff", "jitter-missing", "circuit-breaker", "resource-exhaustion"]
+}
